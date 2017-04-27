@@ -11,11 +11,14 @@ using OfficeDevPnP.Core;
 
 using Microsoft.SharePoint.Client;
 using Microsoft.SharePoint.Client.WebParts;
+using JDP.Remediation.Console.Common.Utilities;
 
 namespace JDP.Remediation.Console
 {
     public class Helper
     {
+        public static int contextCount = 0;
+        public static bool alreadyAuthorized = false;
 
         public class MasterPageInfo
         {
@@ -25,7 +28,7 @@ namespace JDP.Remediation.Console
             public bool InheritCustomMaster;
         }
 
-        public static ClientContext CreateAuthenticatedUserContext(string domain, string username, SecureString password, string siteUrl)
+        public static ClientContext CreateAuthenticatedUserContextOld(string domain, string username, SecureString password, string siteUrl)
         {
             ClientContext userContext = new ClientContext(siteUrl);
             if (String.IsNullOrEmpty(domain))
@@ -41,6 +44,100 @@ namespace JDP.Remediation.Console
 
             return userContext;
         }
+        public static ClientContext CreateAuthenticatedUserContext(string domain, string username, SecureString password, string siteUrl)
+        {
+            ClientContext userContext = new ClientContext(siteUrl);
+            try
+            {
+                if (String.IsNullOrEmpty(domain))
+                {
+                    // use o365 authentication (SPO-MT or vNext)
+                    userContext.Credentials = new SharePointOnlineCredentials(username, password);
+                }
+                else
+                {
+                    // use Windows authentication (SPO-D or On-Prem) 
+                    userContext.Credentials = new NetworkCredential(username, password, domain);
+                }
+
+                Web web = userContext.Web;
+                userContext.Load(web);
+                userContext.ExecuteQuery();
+                contextCount = 0;
+                alreadyAuthorized = true;
+                return userContext;
+            }
+            catch (System.Net.WebException exc)
+            {
+                if (exc.Message.ToLower().Contains("unauthorized") && alreadyAuthorized == false)
+                {
+                    contextCount++;
+                    if (contextCount == 1)
+                    {
+                        Logger.LogMessage(String.Format("\n"), true);
+                        Logger.LogErrorMessage(String.Format("Attempt [{0}]: You have entered an invalid username or password. The maximum retry attempts allowed for login are 3. You have 2 more attempts.", contextCount, 3 - contextCount), true);
+                        ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", exc.Message, exc.ToString(), "CreateAuthenticatedUserContext()", exc.GetType().ToString());
+                    }
+                    else if (contextCount == 2)
+                    {
+                        Logger.LogMessage(String.Format("\n"), true);
+                        Logger.LogErrorMessage(String.Format("Attempt [{0}]: Incorrect login credentials twice. You have one more attempt. If you fail to enter correct credentials this time, application would be terminated.", contextCount, 3 - contextCount), true);
+                        //Logger.LogErrorMessage(String.Format("\nWrong user credentials given for {0} time. {1} attemps remained", contextCount, 3 - contextCount), true);
+                        ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", exc.Message, exc.ToString(), "CreateAuthenticatedUserContext()", exc.GetType().ToString());
+                    }
+                    else if (contextCount == 3)
+                    {
+                        Logger.LogErrorMessage(String.Format("\n"), true);
+                        Logger.LogErrorMessage(String.Format("Attempt [{0}]: You have entered an invalid username or password. Press any key to terminate the application!!", contextCount, 3 - contextCount), true);
+                        ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", exc.Message, exc.ToString(), "CreateAuthenticatedUserContext()", exc.GetType().ToString());
+
+                        System.Console.ReadKey();
+                        Environment.Exit(0);
+                    }
+
+                    Program.GetCredentials();
+                    userContext = CreateAuthenticatedUserContext(Program.AdminDomain, Program.AdminUsername, Program.AdminPassword, siteUrl);
+                }
+            }
+            catch (System.ArgumentNullException exc)
+            {
+                contextCount++;
+                if (contextCount == 1)
+                {
+                    Logger.LogMessage(String.Format("\n"), true);
+                    Logger.LogErrorMessage(String.Format("Attempt [{0}]: You have entered an invalid username or password. The maximum retry attempts allowed for login are 3. You have 2 more attempts.", contextCount, 3 - contextCount), true);
+                    ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", exc.Message, exc.ToString(), "CreateAuthenticatedUserContext()", exc.GetType().ToString());
+                }
+                else if (contextCount == 2)
+                {
+                    Logger.LogMessage(String.Format("\n"), true);
+                    Logger.LogErrorMessage(String.Format("Attempt [{0}]: Incorrect login credentials twice. You have one more attempt. If you fail to enter correct credentials this time, application would be terminated.", contextCount, 3 - contextCount), true);
+                    //Logger.LogErrorMessage(String.Format("\nWrong user credentials given for {0} time. {1} attemps remained", contextCount, 3 - contextCount), true);
+                    ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", exc.Message, exc.ToString(), "CreateAuthenticatedUserContext()", exc.GetType().ToString());
+                }
+                else if (contextCount == 3)
+                {
+                    Logger.LogErrorMessage(String.Format("\n"), true);
+                    Logger.LogErrorMessage(String.Format("Attempt [{0}]: You have entered an invalid username or password. Press any key to terminate the application!!", contextCount, 3 - contextCount), true);
+                    ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", exc.Message, exc.ToString(), "CreateAuthenticatedUserContext()", exc.GetType().ToString());
+
+                    System.Console.ReadKey();
+                    Environment.Exit(0);
+                }
+
+                Program.GetCredentials();
+                userContext = CreateAuthenticatedUserContext(Program.AdminDomain, Program.AdminUsername, Program.AdminPassword, siteUrl);
+            }
+
+            catch (Exception ex)
+            {
+                Logger.LogErrorMessage(String.Format("\nCreateAuthenticatedUserContext() failed for {0}: Error={1}", siteUrl, ex.Message), false);
+                ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, siteUrl, "Authentication", ex.Message, ex.ToString(), "CreateAuthenticatedUserContext()", ex.GetType().ToString());
+            }
+
+            return userContext;
+        }
+
 
         /// <summary>
         /// Creates a Secure String
@@ -232,8 +329,8 @@ namespace JDP.Remediation.Console
 
                 mpi.MasterPageUrl = web.MasterUrl;
                 mpi.CustomMasterPageUrl = web.CustomMasterUrl;
-                mpi.InheritMaster = web.AllProperties[Constants.PropertyBagInheritMaster].ToString().ToBoolean();
-                mpi.InheritCustomMaster = web.AllProperties[Constants.PropertyBagInheritCustomMaster].ToString().ToBoolean();
+                mpi.InheritMaster = web.GetPropertyBagValueString(Constants.PropertyBagInheritMaster, "False").ToBoolean();
+                mpi.InheritCustomMaster = web.GetPropertyBagValueString(Constants.PropertyBagInheritCustomMaster, "False").ToBoolean();
             }
             catch (Exception ex)
             {
@@ -257,8 +354,8 @@ namespace JDP.Remediation.Console
 
                 web.MasterUrl = mpFilePath;
                 web.CustomMasterUrl = mpFilePath;
-                web.AllProperties[Constants.PropertyBagInheritMaster] = ((!isRoot && inheritMaster) ? "True" : "False");
-                web.AllProperties[Constants.PropertyBagInheritCustomMaster] = ((!isRoot && inheritMaster) ? "True" : "False");
+                web.SetPropertyBagValue(Constants.PropertyBagInheritMaster, ((!isRoot && inheritMaster) ? "True" : "False"));
+                web.SetPropertyBagValue(Constants.PropertyBagInheritCustomMaster, ((!isRoot && inheritMaster) ? "True" : "False"));
                 web.Update();
                 web.Context.ExecuteQuery();
 
@@ -285,8 +382,8 @@ namespace JDP.Remediation.Console
 
                 web.MasterUrl = mpi.MasterPageUrl;
                 web.CustomMasterUrl = mpi.CustomMasterPageUrl;
-                web.AllProperties[Constants.PropertyBagInheritMaster] = ((!isRoot && mpi.InheritMaster) ? "True" : "False");
-                web.AllProperties[Constants.PropertyBagInheritCustomMaster] = ((!isRoot && mpi.InheritCustomMaster) ? "True" : "False");
+                web.SetPropertyBagValue(Constants.PropertyBagInheritMaster, ((!isRoot && mpi.InheritMaster) ? "True" : "False"));
+                web.SetPropertyBagValue(Constants.PropertyBagInheritCustomMaster, ((!isRoot && mpi.InheritCustomMaster) ? "True" : "False"));
                 web.Update();
                 web.Context.ExecuteQuery();
 
@@ -347,8 +444,9 @@ namespace JDP.Remediation.Console
         /// </summary>
         /// <param name="web">this MUST be the web that contains the file to delete</param>
         /// <param name="serverRelativeFilePath">the SERVER-relative path to the file ("/sites/site/web/lib/folder/file.ext")</param>
-        public static void DeleteFileByServerRelativeUrl(Web web, string serverRelativeFilePath)
+        public static bool DeleteFileByServerRelativeUrl(Web web, string serverRelativeFilePath)
         {
+            bool result = false;
             try
             {
                 Logger.LogInfoMessage(String.Format("Deleting File: {0} ...", serverRelativeFilePath), false);
@@ -361,22 +459,27 @@ namespace JDP.Remediation.Console
                 {
                     targetFile.DeleteObject();
                     web.Context.ExecuteQuery();
-
-                    Logger.LogSuccessMessage(String.Format("Deleted File: {0}", serverRelativeFilePath), false);
+                    result = true;
+                    Logger.LogSuccessMessage(String.Format("Deleted File: {0}", serverRelativeFilePath), true);
                 }
                 else
                 {
-                    Logger.LogErrorMessage(String.Format("DeleteFileByServerRelativeUrl() failed for {0}: Error={1}", serverRelativeFilePath, "File was not Found."), false);
+                    Logger.LogErrorMessage(String.Format("DeleteFileByServerRelativeUrl() failed for {0}: Error={1}", serverRelativeFilePath, "File was not Found."), true);
                 }
             }
             catch (ServerException ex)
             {
-                Logger.LogErrorMessage(String.Format("DeleteFileByServerRelativeUrl() failed for {0}: Error={1}", serverRelativeFilePath, ex.Message), false);
+                Logger.LogErrorMessage(String.Format("[Helper: DeleteFileByServerRelativeUrl] failed for {0}: Error={1}", serverRelativeFilePath, ex.Message), true);
+                ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, web.Url, "N/A", ex.Message, ex.ToString(), "DeleteFileByServerRelativeUrl",
+                    ex.GetType().ToString(), String.Format("DeleteFileByServerRelativeUrl() failed for {0}: Error={1}", serverRelativeFilePath, ex.Message));
             }
             catch (Exception ex)
             {
-                Logger.LogErrorMessage(String.Format("DeleteFileByServerRelativeUrl() failed for {0}: Error={1}", serverRelativeFilePath, ex.Message), false);
+                Logger.LogErrorMessage(String.Format("[Helper: DeleteFileByServerRelativeUrl] failed for {0}: Error={1}", serverRelativeFilePath, ex.Message), true);
+                ExceptionCsv.WriteException(Constants.NotApplicable, Constants.NotApplicable, web.Url, "N/A", ex.Message, ex.ToString(), "DeleteFileByServerRelativeUrl",
+                    ex.GetType().ToString(), String.Format("DeleteFileByServerRelativeUrl() failed for {0}: Error={1}", serverRelativeFilePath, ex.Message));
             }
+            return result;
         }
 
         public static void AddWebPartToPage(Web web, string webPartFile, Microsoft.SharePoint.Client.File page, string zoneId)
@@ -736,5 +839,71 @@ namespace JDP.Remediation.Console
                 return new string[0];
             }
         }
+
+        public static string SafeGetFileAsString(Web web, string serverRelativeMappingFilePath)
+        {
+            try
+            {
+                return web.GetFileAsString(serverRelativeMappingFilePath);
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public static string UploadDeviceChannelMappingFile(Web web, string serverRelativeMappingFilePath, string fileContents, string description)
+        {
+            try
+            {
+                Logger.LogInfoMessage(String.Format("Uploading Device Channel Mapping File: {0} ...", serverRelativeMappingFilePath), false);
+
+                // grab a reference to the MP Gallery where the device channel mapping file resides.
+                List mpGallery = web.GetCatalog((int)ListTemplateType.MasterPageCatalog);
+                Folder mpGalleryRoot = mpGallery.RootFolder;
+                web.Context.Load(mpGallery);
+                web.Context.Load(mpGalleryRoot);
+                web.Context.ExecuteQuery();
+
+                // get the file and check-out if necessary
+                File dcmFile = GetFileFromWeb(web, serverRelativeMappingFilePath);
+                if (dcmFile != null)
+                {
+                    web.CheckOutFile(serverRelativeMappingFilePath);
+                }
+
+                // prepare the file contents for upload
+                Byte[] fileBytes = System.Text.Encoding.UTF8.GetBytes(fileContents);
+
+                // Use CSOM to upload the file
+                FileCreationInformation newFile = new FileCreationInformation();
+                newFile.Content = fileBytes;
+                newFile.Overwrite = true;
+                newFile.Url = serverRelativeMappingFilePath;
+
+                File uploadFile = mpGalleryRoot.Files.Add(newFile);
+                web.Context.Load(uploadFile);
+                web.Context.ExecuteQuery();
+
+                // check-in and approve as necessary
+                if (mpGallery.ForceCheckout || mpGallery.EnableVersioning)
+                {
+                    web.CheckInFile(uploadFile.ServerRelativeUrl, CheckinType.MajorCheckIn, description);
+                    if (mpGallery.EnableModeration)
+                    {
+                        web.ApproveFile(uploadFile.ServerRelativeUrl, description);
+                    }
+                }
+
+                Logger.LogSuccessMessage(String.Format("Uploaded Device Channel Mapping File: {0}", uploadFile.ServerRelativeUrl), false);
+                return uploadFile.ServerRelativeUrl;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogErrorMessage(String.Format("UploadDeviceChannelMappingFile() failed for {0}: Error={1}", serverRelativeMappingFilePath, ex.Message), false);
+                return String.Empty;
+            }
+        }
+
     }
 }

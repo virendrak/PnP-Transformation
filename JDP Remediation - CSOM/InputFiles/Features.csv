@@ -1,0 +1,9 @@
+﻿FeatureID,FeatureName,SolutionName,FeatureScope
+f0f9a242-5c29-4750-8f7a-c11d00635c33,Anubhav_SiteColumns Feature1,anubhav_sitecolumns.wsp,Site
+a2428e6d-8fbc-428d-8abb-6332cc5c4d3c,AnubhavContentTypeER SiteColumns,anubhavcontenttypeer.wsp,Site
+82a16e50-d128-49d9-b387-8ba7882bd69b,AnubhavContentTypeER ContentType,anubhavcontenttypeer.wsp,Site
+14502138-871b-4cd4-9e01-a40d84f465d9,AnubhavContentTypeER AttachER,anubhavcontenttypeer.wsp,Site
+25113e4f-5021-4bc8-8f07-4e8df87ab258,Contoso Add Missing Web Parts Feature,contoso.solution.web.wsp,Site
+A3F50EF7-7E00-41e6-9903-0E38AA2378B5,$Resources:FeatureName,contoso.solution.web.wsp,Site
+A056D754-7EBA-43eb-BE93-FC58C6A5FAD3,Best Bets Suggestions,contoso.solution.web.wsp,Site
+BAA826A9-4CE7-48cc-94F4-16F5BD2927DF,BestBetsSuggestions List Template,contoso.solution.web.wsp,Site

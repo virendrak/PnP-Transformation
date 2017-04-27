@@ -1,0 +1,7 @@
+﻿ContentDatabase,SiteCollection,SiteCollectionOwner,SiteTemplateGalleryPath,SiteTemplateID,SiteTemplateName,SolutionName,WebApplication,WebUrl
+Portal_Content_01,https://intranet.poc.com/sites/delVidhiTest2,N/A,sites/delVidhiTest2/_catalogs/solutions,012f2bdb-2677-4dff-91f8-7982cd3e7305,delVidhiTest2CTSiteTemplate.wsp,N/A,https://intranet.poc.com/,https://intranet.poc.com/sites/delVidhiTest2
+Portal_Content_01,https://intranet.poc.com/sites/SudhaTeam2,N/A,sites/SudhaTeam2/_catalogs/solutions,791d5f83-dfcb-403e-a59b-41f98d3ff525,CTSiteTemplateSudhaTeam2.wsp,N/A,https://intranet.poc.com/,https://intranet.poc.com/sites/SudhaTeam2
+Portal_Content_01,https://intranet.poc.com/sites/SudhaTeam2,N/A,sites/SudhaTeam2/_catalogs/solutions,780ce750-4b16-41dd-964f-e3c3dfafb4be,SudhaTestingSiteTemplate.wsp,N/A,https://intranet.poc.com/,https://intranet.poc.com/sites/SudhaTeam2
+Portal_Content_01,https://intranet.poc.com/sites/DiscoveryTool,N/A,sites/DiscoveryTool/_catalogs/solutions,0dcd5145-44b4-4f34-874f-16827bdf5dd8,gud.wsp,N/A,https://intranet.poc.com/,https://intranet.poc.com/sites/DiscoveryTool
+Portal_Content_01,https://intranet.poc.com/sites/DiscoveryTool,N/A,sites/DiscoveryTool/_catalogs/solutions,7028b688-183b-410f-a91a-f2c983e64d5b,SITTEMP1.wsp,N/A,https://intranet.poc.com/,https://intranet.poc.com/sites/DiscoveryTool
+Portal_Content_01,https://intranet.poc.com/sites/DiscoveryTool,N/A,sites/DiscoveryTool/_catalogs/solutions,da1eab1a-d198-4c46-bd45-2e5c39058637,TSR1.wsp,N/A,https://intranet.poc.com/,https://intranet.poc.com/sites/DiscoveryTool

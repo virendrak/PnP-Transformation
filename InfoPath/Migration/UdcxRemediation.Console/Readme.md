@@ -11,7 +11,7 @@ This is a client-side Console application that reads input .csv file and it filt
 ### Solution ###
 Solution | Author(s)
 ---------|----------
-UdcxRemediation.Console | Raja Shekar Bhumireddy, Bert Jansen (**Microsoft**)
+UdcxRemediation.Console | Ron Tielke, Raja Shekar Bhumireddy, Bert Jansen (**Microsoft**)
 
 ### Version history ###
 Version  | Date | Comments
@@ -29,6 +29,32 @@ This is a client-side Console application that reads input .csv file and it filt
 
 # Usage #
 ## Authentication ##
+
+### App-Only authentication
+Specify that you want to use app-only in the configuration file like shown below:
+
+```XML
+<appSettings>
+    <!-- Set to "true" if you wish to use App-only authentication -->
+    <!-- Set to "false" if you wish to use User authentication -->
+    <add key="UseAppModel" value="true" />
+
+    <!-- Configure the following Client keys if you wish to use App Registration Mode -->
+    <!--
+    Minimum App Permissions required on target site collection that hosts the InfoPath form:
+    <AppPermissionRequests AllowAppOnlyPolicy="true">
+      <AppPermissionRequest Scope="http://sharepoint/content/tenant" Right="FullControl" />
+    </AppPermissionRequests>
+
+    <add key="ClientId" value="obtain from AppRegNew.aspx" />
+    <add key="ClientSecret" value="obtain from AppRegNew.aspx" />
+    -->
+    <add key="ClientId" value="your client id" />
+    <add key="ClientSecret" value="your client secret" />
+</appSettings>
+```
+
+### Credentials authentication
 The console will prompt the user for an administration account.  
 Be sure to specify an account that has Admin permissions on the target SharePoint environment.  This account will be used to generate Authenticated User Context instances that will be leveraged to access the target environments.
 - If you wish to target an SPO-D (or On-Prem) farm: 
@@ -36,7 +62,7 @@ Be sure to specify an account that has Admin permissions on the target SharePoin
 - If you wish to target an SPO-MT (or vNext) farm:
     - use the <alias>@<domain>.com format for the administrator account
 
-Example is shown in the below screen shot:
+Example is shown in the below screen shot:  
 
 ![](http://i.imgur.com/NT51RMx.png)
 
@@ -93,5 +119,5 @@ This CSV that follows the header format and columns as mentioned below: Status, 
 
 See [UDCXStatusReport_28_12_2015_10_24_59.csv](/InfoPath/Migration/UdcxRemediation.Console/UDCXStatusReport_28_12_2015_10_24_59.csv) for an status report sample.
 
-
+<img src="https://telemetry.sharepointpnp.com/pnp-transformation/infopath/migration/UdcxRemediation.Console" /> 
 

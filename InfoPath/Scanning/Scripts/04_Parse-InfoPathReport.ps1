@@ -25,6 +25,7 @@ try
     $Global:productVersions = @()
     $Global:publishUrls = @()
     $Global:soapConnections = @()
+    $Global:restConnections = @()
     $Global:udcConnections = @()
     $Global:adoConnections = @()
     $Global:dataConnections = @()
@@ -40,6 +41,7 @@ try
                                 "GetCommonManager" = "userprofileservice.asmx"
                                 "GetCommonMemberships" = "userprofileservice.asmx"
                                 "GetUserMemberships" = "userprofileservice.asmx"
+                                #"GetRunningWorkflowTasksForCurrentUser" = "workflow.asmx"
                                 "GetUserPropertyByAccountName" = "userprofileservice.asmx"
                                 "CheckInFile" = "lists.asmx"
                                 "CheckOutFile" = "lists.asmx"
@@ -60,7 +62,7 @@ try
 
 
     $infoPathRecords = Import-CSV $Global:reportFolder\InfoPathScraper_report.csv -Header ColumnA, ColumnB, ColumnC, ColumnD
-    $udcxRecords = @(Import-CSV $Global:udcxFolder\UDCXReport.csv | Select WebId, RelativeUrl, SelectServiceUrl, SelectSoapActionName, UpdateServiceUrl, UpdateSoapActionName)
+    $udcxRecords = @(Import-CSV $Global:udcxFolder\UDCXReport.csv | Select SiteId, RelativeUrl, SelectServiceUrl, SelectSoapActionName, UpdateServiceUrl, UpdateSoapActionName)
     
     function Add-Urn
     {
@@ -118,13 +120,13 @@ try
         return $retVal
     }
 
-    function Lookup-XSNWebIDs
+    function Lookup-XSNSiteIds
     {
         param($urn)
 
         $formCabPaths = @($Global:cabPaths | ?{$_.ColumnA -eq $urn})
     
-        $tempWebIDs = @()
+        $tempSiteIds = @()
 
         foreach($url in $formCabPaths)
         {
@@ -141,16 +143,16 @@ try
             #CabPath will always be in the following format c:\splocalbin\infopath_scanner\[Guid]\file.xsn       
             $docID = $tempCabPath.Substring(($tempCabPath.LastIndexOf("\")-36), 36)
             $file = $fileInfo[$docID]
-            $tempWebIDs += $file.WebId
+            $tempSiteIds += $file.SiteId
         }
        
-        return $tempWebIDs
+        return $tempSiteIds
     }
 
 
     function Get-SoapConnections
     {
-        param([PSObject]$currentObject)
+        param([PSObject]$currentObject) # the XSN form template to process
 
         $urls = @()
 
@@ -167,6 +169,18 @@ try
             }
         }
 
+        foreach($item in $Global:restConnections)
+        {
+            if($item.ColumnA -ne $currentObject.URN)
+            {
+                continue
+            }
+
+            if ($item.ColumnC -eq "") { $item.ColumnC = "connection in form" }
+            
+            $urls += [string]::Format("REST:{0}", $item.ColumnC)
+        }
+
         foreach($item in $Global:udcConnections)
         {
             if($item.ColumnA -ne $currentObject.URN)
@@ -176,9 +190,14 @@ try
             
             if(-not $supportedWebServices.ContainsKey($item.ColumnD))
             {
-                $webIds = @(Lookup-XSNWebIDs $currentObject.URN)             
+                $siteIds = @(Lookup-XSNSiteIds $currentObject.URN)             
                 $udcxFilePath = [string]::Format("*{0}", $item.ColumnC)                
-                $udcxCalls = $udcxRecords | ? { $webIds -contains $_.WebId -and $_.RelativeUrl -like  $udcxFilePath}
+
+                #Query the list of UDCX Connection File records for the ones expected by this deployed form instance
+                # Notes: 
+                #  - XSN Forms can be deployed to a different SPWeb than the one that contains the UDCX file; however, both SPWebs must be within the same SPSite (so we compare SiteIds)
+                #  - It is entirely possible that the expected UDCX file is not present (e.g., not deployed, moved, renamed, deleted, etc.)
+                $udcxCalls = $udcxRecords | ? { $siteIds -contains $_.SiteId -and $_.RelativeUrl -like  $udcxFilePath}
 
                 foreach($udcxCall in $udcxCalls)
                 {
@@ -286,6 +305,11 @@ try
                                     } 
                                  }
 
+                "RESTConnection" {                                      
+                                    $Global:restConnections += $item
+                                    Add-Urn($item.ColumnA)                                    
+                                 }
+
                 "UdcConnection" {
                                     $Global:udcConnections += $item
                                     Add-Urn($item.ColumnA)
@@ -375,11 +399,7 @@ try
                                                                SiteUrls = [string]::Empty
                                                                URLs = [string]::Empty
                                                                UnsupportedSoapCalls = [string]::Empty
-                                                               UnsupportedSoapCallsCount = 0
-                                                               UnsupportedUdcCalls = [string]::Empty
-                                                               UnsupportedUdcCallsCount = 0
-                                                               UnsupportedAdoConnection = [string]::Empty
-                                                               UnsupportedAdoConnectionInstances = 0
+                                                               UnsupportedSoapCallsCount = 0                                                              
                                                                UnsupportedDataConnectionTypes = [string]::Empty
                                                                UnsupportedDataConnectionInstances = 0
                                                                ManagedCode = $false
